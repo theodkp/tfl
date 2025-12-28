@@ -1,11 +1,19 @@
-import json
 import requests
-import pandas as pd
+import os
+TFL_APP_KEY = os.environ["TFL_APP_KEY"]
 
-# todo
-def api(URL,KEY):
-    resp = requests.get(URL, headers={"Accept": "application/json"}, timeout=30)
+
+def api(url: str, params=None):
+    if params is None:
+        params = {}
+
+    params["app_key"] = TFL_APP_KEY
+
+    resp = requests.get(
+        url,
+        params=params,
+        headers={"Accept": "application/json"},
+        timeout=30,
+    )
     resp.raise_for_status()
-    data = resp.json()
-
-    return data
+    return resp.json()
