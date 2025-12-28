@@ -1,0 +1,64 @@
+import pandas as pd
+from src.tfl_api import api
+from datetime import datetime, timezone
+from pathlib import Path
+import logging
+
+URL = "https://api.tfl.gov.uk/Line/Mode/tube/Status"
+
+
+logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
+
+
+def fetch_line_status_snapshot(time: datetime,key: str) -> pd.DataFrame:
+    ''' Fetches a single snapshot of tube line statuses '''
+
+    try:
+        res = api(URL, key)
+
+        rows = []
+
+        for line in res:
+            line_id = line["id"]
+            line_name = line["name"]
+
+            status = line["lineStatuses"][0]
+
+            rows.append({
+                "snapshot_time_utc": snapshot_time,
+                "line_id": line_id,
+                "line_name": line_name,
+                "status_severity": status["statusSeverity"],
+                "status_description": status["statusSeverityDescription"],
+            })
+
+        return pd.DataFrame(rows)
+    
+    except Exception as e:
+        logging.error(f"Failed to fetch line status: {e}")
+        raise
+
+
+
+if __name__ == "__main__":
+
+    snapshot_time = datetime.now(timezone.utc)
+
+    key = "123"
+
+    df = fetch_line_status_snapshot(snapshot_time,key)
+
+    date_str = snapshot_time.strftime("%Y-%m-%d")
+
+    OUT_DIR = Path(f"data/raw/line_status/date={date_str}")
+    OUT_DIR.mkdir(parents=True, exist_ok=True)
+
+    OUT_FILE = OUT_DIR / "snapshots.parquet"
+
+    if OUT_FILE.exists():
+        existing = pd.read_parquet(OUT_FILE)
+        df = pd.concat([existing, df], ignore_index=True)
+
+    df.to_parquet(OUT_FILE, index=False)
+
+    logging.info(f"Successfully saved {len(df)} rows to {OUT_FILE}")
