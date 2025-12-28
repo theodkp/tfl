@@ -12,18 +12,22 @@ URL = "https://api.tfl.gov.uk/Line/Mode/tube/Status"
 logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
 
 
-def fetch_line_status_snapshot(snapshot_time: datetime,key: str) -> pd.DataFrame:
+def fetch_line_status_snapshot(snapshot_time: datetime) -> pd.DataFrame:
     ''' Fetches a single snapshot of tube line statuses '''
 
     try:
-        res = api(URL, key)
+        res = api(URL)
         rows = []
 
         for line in res:
             line_id = line["id"]
             line_name = line["name"]
 
-            status = line["lineStatuses"][0]
+            statuses = line.get("lineStatuses", [])
+            if not statuses:
+                continue
+
+            status = statuses[0] 
 
             rows.append({
                 "snapshot_time_utc": snapshot_time,
@@ -45,9 +49,8 @@ if __name__ == "__main__":
 
     snapshot_time = datetime.now(timezone.utc)
 
-    key = os.environ["TFL_API_KEY"]
 
-    df = fetch_line_status_snapshot(snapshot_time,key)
+    df = fetch_line_status_snapshot(snapshot_time)
 
     date_str = snapshot_time.strftime("%Y-%m-%d")
 
@@ -70,3 +73,4 @@ if __name__ == "__main__":
 
     logging.info(f"Successfully saved {len(df)} rows to {OUT_FILE}")
 
+    logging.debug(df_final.head(5))
