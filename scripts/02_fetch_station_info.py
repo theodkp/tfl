@@ -2,6 +2,7 @@ import pandas as pd
 from src.tfl_api import api
 from pathlib import Path
 import logging
+import os
 
 
 URL = "https://api.tfl.gov.uk/StopPoint/Mode/tube"
@@ -42,7 +43,7 @@ def fetch_stations(key:str) -> pd.DataFrame:
 if __name__ == "__main__":
 
 
-    key = "123"
+    key = os.environ["TFL_API_KEY"]
 
     df = fetch_stations(key)
 
