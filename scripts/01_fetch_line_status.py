@@ -3,6 +3,8 @@ from src.tfl_api import api
 from datetime import datetime, timezone
 from pathlib import Path
 import logging
+import os
+
 
 URL = "https://api.tfl.gov.uk/Line/Mode/tube/Status"
 
@@ -10,12 +12,11 @@ URL = "https://api.tfl.gov.uk/Line/Mode/tube/Status"
 logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
 
 
-def fetch_line_status_snapshot(time: datetime,key: str) -> pd.DataFrame:
+def fetch_line_status_snapshot(snapshot_time: datetime,key: str) -> pd.DataFrame:
     ''' Fetches a single snapshot of tube line statuses '''
 
     try:
         res = api(URL, key)
-
         rows = []
 
         for line in res:
@@ -44,7 +45,7 @@ if __name__ == "__main__":
 
     snapshot_time = datetime.now(timezone.utc)
 
-    key = "123"
+    key = os.environ["TFL_API_KEY"]
 
     df = fetch_line_status_snapshot(snapshot_time,key)
 
@@ -55,10 +56,17 @@ if __name__ == "__main__":
 
     OUT_FILE = OUT_DIR / "snapshots.parquet"
 
+
     if OUT_FILE.exists():
         existing = pd.read_parquet(OUT_FILE)
-        df = pd.concat([existing, df], ignore_index=True)
+        df_final = pd.concat([existing, df], ignore_index=True)
+    else:
+        df_final = df
 
-    df.to_parquet(OUT_FILE, index=False)
+
+    temp_file = OUT_FILE.with_suffix(".tmp")
+    df_final.to_parquet(temp_file, index=False)
+    temp_file.replace(OUT_FILE) 
 
     logging.info(f"Successfully saved {len(df)} rows to {OUT_FILE}")
+
