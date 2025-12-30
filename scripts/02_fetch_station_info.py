@@ -7,31 +7,53 @@ import os
 
 URL = "https://api.tfl.gov.uk/StopPoint/Mode/tube"
 
+TUBE_LINES = {
+    "bakerloo",
+    "central",
+    "circle",
+    "district",
+    "hammersmith-city",
+    "jubilee",
+    "metropolitan",
+    "northern",
+    "piccadilly",
+    "victoria",
+    "waterloo-city",
+}
 
 
 logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
 
 
-def fetch_stations(key:str) -> pd.DataFrame:
+def fetch_stations() -> pd.DataFrame:
     ''' Fetches info about each station, we save id as well as lines the station serves '''
 
 
     try:
-        res = api(URL, key)
+        res = api(URL)
 
         rows = []
 
         for sp in res["stopPoints"]:
             if sp["stopType"] != "NaptanMetroStation":
                 continue
+            
 
             station = sp["stationNaptan"]
 
+            
+
             for line in sp.get("lines", []):
+                line_id = line["id"]
+
+                if line_id not in TUBE_LINES:
+                    continue
+
                 rows.append({
                     "station_naptan": station,
-                    "line_id": line["id"],
+                    "line_id": line_id,
                 })
+
 
         return pd.DataFrame(rows).drop_duplicates()
     
@@ -43,9 +65,8 @@ def fetch_stations(key:str) -> pd.DataFrame:
 if __name__ == "__main__":
 
 
-    key = os.environ["TFL_API_KEY"]
 
-    df = fetch_stations(key)
+    df = fetch_stations()
 
     OUT_DIR = Path(f"data/raw/stations/")
 
