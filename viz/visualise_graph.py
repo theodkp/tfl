@@ -7,9 +7,8 @@ def plot_static_graph(graph_path):
         G = pickle.load(f)
     
     plt.figure(figsize=(12, 10))
-    pos = nx.spring_layout(G, k=1.5, seed=42) # k=spread, seed=consistent layout
+    pos = nx.spring_layout(G, k=1.5, seed=42) 
     
-    # Scale edge widths by weight
     weights = [G[u][v]['weight'] * 0.5 for u, v in G.edges()]
     
     nx.draw_networkx_nodes(G, pos, node_color='skyblue', node_size=2000)
