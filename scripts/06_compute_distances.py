@@ -47,7 +47,7 @@ def compute_unweighted_shortest_paths(G: nx.Graph) -> pd.DataFrame:
     return df
 
 
-def main() -> None:
+def compute_distances() -> None:
     logging.info(f"Loading line graph from {IN_GRAPH}")
     G = load_graph(IN_GRAPH)
 
@@ -76,5 +76,5 @@ def main() -> None:
 
 if __name__ == "__main__":
     setup_logging()
-    main()
+    compute_distances()
 
