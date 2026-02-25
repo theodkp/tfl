@@ -42,20 +42,21 @@ for u, v, d in G.edges(data=True):
     print(f"{u} — {v}: {d['weight']}")
 
 
-# plt.figure(figsize=(10, 10))
 
-# pos = nx.spring_layout(G, seed=42, weight="weight")
+# creates 
+plt.figure(figsize=(10, 10))
 
-# # Node sizes = degree
-# node_sizes = [300 + 300 * G.degree(n) for n in G.nodes()]
+pos = nx.spring_layout(G, seed=42, weight="weight")
 
-# # Edge widths = weight
-# edge_widths = [G[u][v]["weight"] for u, v in G.edges()]
+# Node sizes = degree
+node_sizes = [300 + 300 * G.degree(n) for n in G.nodes()]
 
-# nx.draw_networkx_nodes(G, pos, node_size=node_sizes, node_color="lightblue")
-# nx.draw_networkx_edges(G, pos, width=edge_widths, alpha=0.7)
-# nx.draw_networkx_labels(G, pos, font_size=10)
+# Edge widths = weight
+edge_widths = [G[u][v]["weight"] for u, v in G.edges()]
 
-# plt.title("London Underground Line Interchange Network")
-# plt.axis("off")
-# plt.show()
+nx.draw_networkx_nodes(G, pos, node_size=node_sizes, node_color="lightblue")
+nx.draw_networkx_edges(G, pos, width=edge_widths, alpha=0.7)
+nx.draw_networkx_labels(G, pos, font_size=10)
+
+plt.title("London Underground Line Interchange Network")
+plt.axis("off")

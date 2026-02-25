@@ -1,15 +1,14 @@
-import pandas as pd
-from src.tfl_api import api
+import logging
 from datetime import datetime, timezone
 from pathlib import Path
-import logging
-import os
+
+import pandas as pd
+
+from src.logging_config import setup_logging
+from src.tfl_api import api
 
 
 URL = "https://api.tfl.gov.uk/Line/Mode/tube/Status"
-
-
-logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
 
 
 def fetch_line_status_snapshot(snapshot_time: datetime) -> pd.DataFrame:
@@ -46,6 +45,8 @@ def fetch_line_status_snapshot(snapshot_time: datetime) -> pd.DataFrame:
 
 
 if __name__ == "__main__":
+
+    setup_logging()
 
     snapshot_time = datetime.now(timezone.utc)
 

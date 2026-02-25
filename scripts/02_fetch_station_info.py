@@ -1,8 +1,10 @@
-import pandas as pd
-from src.tfl_api import api
-from pathlib import Path
 import logging
-import os
+from pathlib import Path
+
+import pandas as pd
+
+from src.logging_config import setup_logging
+from src.tfl_api import api
 
 
 URL = "https://api.tfl.gov.uk/StopPoint/Mode/tube"
@@ -20,9 +22,6 @@ TUBE_LINES = {
     "victoria",
     "waterloo-city",
 }
-
-
-logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
 
 
 def fetch_stations() -> pd.DataFrame:
@@ -64,7 +63,7 @@ def fetch_stations() -> pd.DataFrame:
     
 if __name__ == "__main__":
 
-
+    setup_logging()
 
     df = fetch_stations()
 

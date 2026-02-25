@@ -1,17 +1,18 @@
-import pandas as pd
-import networkx as nx
-import pickle
 import logging
-from pathlib import Path
+import pickle
 from itertools import combinations
+from pathlib import Path
 from typing import Tuple
+
+import networkx as nx
+import pandas as pd
+
+from src.logging_config import setup_logging
 
 IN_FILE = Path("data/raw/stations/line_station.parquet")
 OUT_DIR = Path("data/processed")
 OUT_GRAPH = OUT_DIR / "line_graph.pkl" 
 OUT_EDGES = OUT_DIR / "line_graph_edges.parquet"
-
-logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
 
 def build_line_graph(df: pd.DataFrame) -> Tuple[nx.Graph, pd.DataFrame]:
     """
@@ -38,6 +39,8 @@ def build_line_graph(df: pd.DataFrame) -> Tuple[nx.Graph, pd.DataFrame]:
     return G, weights
 
 if __name__ == "__main__":
+    setup_logging()
+
     if not IN_FILE.exists():
         logging.error(f"Input file {IN_FILE} not found. Ensure station data is fetched first.")
         exit(1)
