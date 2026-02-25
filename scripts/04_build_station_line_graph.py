@@ -19,7 +19,6 @@ for k in list(station_to_lines)[:3]:
     print(k, station_to_lines[k])
 
 
-
 G = nx.Graph()
 
 for station, lines in station_to_lines.items():
@@ -42,8 +41,7 @@ for u, v, d in G.edges(data=True):
     print(f"{u} — {v}: {d['weight']}")
 
 
-
-# creates 
+# creates
 plt.figure(figsize=(10, 10))
 
 pos = nx.spring_layout(G, seed=42, weight="weight")

@@ -27,7 +27,6 @@ TUBE_LINES = {
 def fetch_stations() -> pd.DataFrame:
     ''' Fetches info about each station, we save id as well as lines the station serves '''
 
-
     try:
         res = api(URL)
 
@@ -36,11 +35,8 @@ def fetch_stations() -> pd.DataFrame:
         for sp in res["stopPoints"]:
             if sp["stopType"] != "NaptanMetroStation":
                 continue
-            
 
             station = sp["stationNaptan"]
-
-            
 
             for line in sp.get("lines", []):
                 line_id = line["id"]
@@ -53,14 +49,13 @@ def fetch_stations() -> pd.DataFrame:
                     "line_id": line_id,
                 })
 
-
         return pd.DataFrame(rows).drop_duplicates()
-    
+
     except Exception as e:
         logging.error(f"Failed to fetch stations: {e}")
         raise
 
-    
+
 if __name__ == "__main__":
 
     setup_logging()
@@ -76,5 +71,3 @@ if __name__ == "__main__":
     df.to_parquet(OUT_FILE, index=False)
 
     logging.info(f"Successfully saved {len(df)} rows to {OUT_FILE}")
-
-

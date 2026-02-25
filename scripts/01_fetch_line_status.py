@@ -26,7 +26,7 @@ def fetch_line_status_snapshot(snapshot_time: datetime) -> pd.DataFrame:
             if not statuses:
                 continue
 
-            status = statuses[0] 
+            status = statuses[0]
 
             rows.append({
                 "snapshot_time_utc": snapshot_time,
@@ -37,11 +37,10 @@ def fetch_line_status_snapshot(snapshot_time: datetime) -> pd.DataFrame:
             })
 
         return pd.DataFrame(rows)
-    
+
     except Exception as e:
         logging.error(f"Failed to fetch line status: {e}")
         raise
-
 
 
 if __name__ == "__main__":
@@ -49,7 +48,6 @@ if __name__ == "__main__":
     setup_logging()
 
     snapshot_time = datetime.now(timezone.utc)
-
 
     df = fetch_line_status_snapshot(snapshot_time)
 
@@ -60,17 +58,15 @@ if __name__ == "__main__":
 
     OUT_FILE = OUT_DIR / "snapshots.parquet"
 
-
     if OUT_FILE.exists():
         existing = pd.read_parquet(OUT_FILE)
         df_final = pd.concat([existing, df], ignore_index=True)
     else:
         df_final = df
 
-
     temp_file = OUT_FILE.with_suffix(".tmp")
     df_final.to_parquet(temp_file, index=False)
-    temp_file.replace(OUT_FILE) 
+    temp_file.replace(OUT_FILE)
 
     logging.info(f"Successfully saved {len(df)} rows to {OUT_FILE}")
 
