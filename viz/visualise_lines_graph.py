@@ -17,7 +17,7 @@ def plot_static_graph(graph_path):
     
     plt.title("Structural Network of Tube Lines (Edge thickness = Shared Stations)")
     plt.axis('off')
-    plt.savefig("viz/line_network_graph.png")
+    plt.savefig("viz/figures/line_network_graph.png")
     plt.show()
 
 
