@@ -14,7 +14,7 @@ DIST_FILE = Path("data/processed/line_distances.parquet")
 OUT_DIR = Path("results")
 OUT_FILE = OUT_DIR / "ablation_effects.parquet"
 
-B_BOOT = 500  
+B_BOOT = 500
 RNG_SEED = 42
 
 
@@ -73,12 +73,14 @@ def load_distance_matrix(lines: List[str]) -> pd.DataFrame:
     mat = mat.reindex(index=lines, columns=lines)
 
     if mat.isna().any().any():
-        raise RuntimeError("Distance matrix contains NaNs after reindexing; check data.")
+        raise RuntimeError(
+            "Distance matrix contains NaNs after reindexing; check data.")
 
     logging.info(
         f"Loaded distance matrix for {mat.shape[0]} lines. "
         f"Distance summary (off-diagonal):\n"
-        + mat.where(~np.eye(len(mat), dtype=bool)).stack().describe().to_string()
+        + mat.where(~np.eye(len(mat), dtype=bool)
+                    ).stack().describe().to_string()
     )
 
     return mat
@@ -110,7 +112,8 @@ def _ols_with_time_fixed_effects(
     Returns the coefficient beta on T.
     """
     if len(outcome) != len(treatment) or len(outcome) != len(times):
-        raise ValueError("Outcome, treatment, and times must have the same length.")
+        raise ValueError(
+            "Outcome, treatment, and times must have the same length.")
 
     dow = times.dayofweek
     hour = times.hour
@@ -172,7 +175,8 @@ def compute_point_estimates(
 
         d_all = _diff_in_means(T, Y_all)
         d_d1 = _diff_in_means(T, Y_d1) if not np.isnan(Y_d1).all() else np.nan
-        d_d2p = _diff_in_means(T, Y_d2p) if not np.isnan(Y_d2p).all() else np.nan
+        d_d2p = _diff_in_means(T, Y_d2p) if not np.isnan(
+            Y_d2p).all() else np.nan
 
         results[line] = {
             "all": d_all,
@@ -216,7 +220,8 @@ def bootstrap_effects(
     wide_np = wide.to_numpy(dtype=int)
 
     for b_ix in range(b):
-        sampled_days = rng.choice(unique_days, size=len(unique_days), replace=True)
+        sampled_days = rng.choice(
+            unique_days, size=len(unique_days), replace=True)
         idx_list = [day_to_idx[d] for d in sampled_days]
         boot_idx = np.concatenate(idx_list)
 
@@ -295,9 +300,9 @@ def run_regression_crosscheck() -> pd.DataFrame:
     Panel regression cross-check for spillover effects.
 
     For each line L, estimate:
-      Y_all(t) = alpha + beta_all * T_L(t) + gamma_{dow×hour} + e_t
-      Y_d1(t)  = alpha + beta_d1 * T_L(t) + gamma_{dow×hour} + e_t
-      Y_d2p(t) = alpha + beta_d2p * T_L(t) + gamma_{dow×hour} + e_t
+      Y_all(t) = alpha + beta_all * T_L(t) + gamma_{dowxhour} + e_t
+      Y_d1(t)  = alpha + beta_d1 * T_L(t) + gamma_{dowxhour} + e_t
+      Y_d2p(t) = alpha + beta_d2p * T_L(t) + gamma_{dowxhour} + e_t
 
     where Y_* are defined as in the ablation (means across other lines at different
     network distances). We report beta_* as regression-style cross-checks.
@@ -367,7 +372,8 @@ if __name__ == "__main__":
 
     logging.info("Ablation effects (preview):")
     logging.info(
-        effects.sort_values("effect_all", ascending=False).to_string(index=False)
+        effects.sort_values(
+            "effect_all", ascending=False).to_string(index=False)
     )
 
     effects.to_parquet(OUT_FILE, index=False)
@@ -381,4 +387,3 @@ if __name__ == "__main__":
 
     reg_effects.to_parquet(reg_out_file, index=False)
     logging.info(f"Wrote regression cross-check effects to {reg_out_file}")
-
