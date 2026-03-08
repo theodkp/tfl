@@ -6,7 +6,7 @@ from typing import Dict, List, Tuple
 import numpy as np
 import pandas as pd
 
-from src.logging_config import setup_logging
+from utils.logging_config import setup_logging
 
 
 STATUS_FILE = Path("data/processed/line_status_5min.parquet")
@@ -30,8 +30,8 @@ class LineEffects:
     treat_rate: float
 
 
+# Load the line status table and pivot to wide format (rows=timestamps, cols=lines).
 def load_status_table() -> pd.DataFrame:
-    """Load the line status table and pivot to wide format."""
     if not STATUS_FILE.exists():
         raise FileNotFoundError(
             f"Status file {STATUS_FILE} not found. "
@@ -43,7 +43,7 @@ def load_status_table() -> pd.DataFrame:
     df["snapshot_time_utc"] = pd.to_datetime(df["snapshot_time_utc"], utc=True)
     df["is_disrupted"] = df["is_disrupted_any"].astype(int)
 
-    # pivot table
+    # Pivot so we can easily slice by line and compute mean disruption across other lines.
     wide = df.pivot(
         index="snapshot_time_utc",
         columns="line_id",
@@ -57,8 +57,8 @@ def load_status_table() -> pd.DataFrame:
     return wide
 
 
+# Load line distances and return a square distance matrix aligned to lines.
 def load_distance_matrix(lines: List[str]) -> pd.DataFrame:
-    """Load line distances and return a square distance matrix aligned to lines."""
     if not DIST_FILE.exists():
         raise FileNotFoundError(
             f"Distance file {DIST_FILE} not found. "
@@ -86,11 +86,11 @@ def load_distance_matrix(lines: List[str]) -> pd.DataFrame:
     return mat
 
 
+# Simple difference in means: E[Y|T=1] - E[Y|T=0].
 def _diff_in_means(
     treatment: np.ndarray,
     outcome: np.ndarray,
 ) -> float:
-    """Simple difference in means E[Y|T=1] - E[Y|T=0]."""
     mask_t = treatment == 1
     mask_c = treatment == 0
 
@@ -100,17 +100,13 @@ def _diff_in_means(
     return float(outcome[mask_t].mean() - outcome[mask_c].mean())
 
 
+# OLS with day-of-week x hour fixed effects. Returns beta on treatment T.
+# Controls for time-of-week so we don't confound rush-hour patterns with spillover.
 def _ols_with_time_fixed_effects(
     outcome: np.ndarray,
     treatment: np.ndarray,
     times: pd.DatetimeIndex,
 ) -> float:
-    """
-    OLS regression: Y = alpha + beta * T + gamma_{dowxhour} + e.
-
-    Implemented via least squares with one-hot dummies for day_of_week x hour_of_day.
-    Returns the coefficient beta on T.
-    """
     if len(outcome) != len(treatment) or len(outcome) != len(times):
         raise ValueError(
             "Outcome, treatment, and times must have the same length.")
@@ -136,15 +132,12 @@ def _ols_with_time_fixed_effects(
     return float(beta_hat[1])
 
 
+# For each line L: when L is disrupted (T=1), how much higher is disruption on other lines?
+# Δ_all = all other lines; Δ_d1 = lines 1 hop away; Δ_d2p = lines 2+ hops away.
 def compute_point_estimates(
     wide: pd.DataFrame,
     dist_mat: pd.DataFrame,
 ) -> Dict[str, Dict[str, float]]:
-    """
-    Compute point estimates Δ_all, Δ_d1, Δ_d2p for each line.
-
-    Returns dict[line_id] -> {"all": Δ_all, "d1": Δ_d1, "d2p": Δ_d2p, "treat_rate": p(T=1)}.
-    """
     lines = list(wide.columns)
     results: Dict[str, Dict[str, float]] = {}
 
@@ -152,9 +145,11 @@ def compute_point_estimates(
         T = wide[line].to_numpy(dtype=int)
         treat_rate = T.mean()
 
+        # Y = mean disruption across other lines (exclude target line).
         mask_all = np.array([l != line for l in lines])
         Y_all = wide.loc[:, mask_all].mean(axis=1).to_numpy(dtype=float)
 
+        # Split by network distance: d1 = direct neighbors, d2p = 2+ hops.
         row = dist_mat.loc[line]
         mask_d1 = (row == 1).to_numpy()
         mask_d1 &= mask_all
@@ -188,19 +183,14 @@ def compute_point_estimates(
     return results
 
 
+# Block bootstrap by day: resample whole days, recompute effects, get 95% CIs.
+# Blocking preserves within-day correlation so CIs aren't too narrow.
 def bootstrap_effects(
     wide: pd.DataFrame,
     dist_mat: pd.DataFrame,
     b: int = B_BOOT,
     seed: int = RNG_SEED,
 ) -> Dict[str, Dict[str, Tuple[float, float]]]:
-    """
-    Block bootstrap by day to obtain CIs for Δ estimates.
-
-    For each bootstrap replicate:
-      - Resample days with replacement.
-      - Recompute Δ_all, Δ_d1, Δ_d2p for each line on the resampled panel.
-    """
     rng = np.random.default_rng(seed)
 
     times = wide.index
@@ -258,6 +248,7 @@ def bootstrap_effects(
     return ci_results
 
 
+# Main pipeline: load data, compute point estimates, bootstrap CIs, return results.
 def run_ablation() -> pd.DataFrame:
     wide = load_status_table()
     lines = list(wide.columns)
@@ -295,18 +286,9 @@ def run_ablation() -> pd.DataFrame:
     return df_out
 
 
+# Regression cross-check: same Y as ablation but OLS with time fixed effects instead of diff-in-means.
+# Beta should be similar to Δ if diff-in-means is valid; helps validate the approach.
 def run_regression_crosscheck() -> pd.DataFrame:
-    """
-    Panel regression cross-check for spillover effects.
-
-    For each line L, estimate:
-      Y_all(t) = alpha + beta_all * T_L(t) + gamma_{dowxhour} + e_t
-      Y_d1(t)  = alpha + beta_d1 * T_L(t) + gamma_{dowxhour} + e_t
-      Y_d2p(t) = alpha + beta_d2p * T_L(t) + gamma_{dowxhour} + e_t
-
-    where Y_* are defined as in the ablation (means across other lines at different
-    network distances). We report beta_* as regression-style cross-checks.
-    """
     wide = load_status_table()
     lines = list(wide.columns)
     dist_mat = load_distance_matrix(lines)

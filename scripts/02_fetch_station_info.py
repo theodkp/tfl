@@ -3,8 +3,8 @@ from pathlib import Path
 
 import pandas as pd
 
-from src.logging_config import setup_logging
-from src.tfl_api import api
+from utils.logging_config import setup_logging
+from utils.tfl_api import api
 
 
 URL = "https://api.tfl.gov.uk/StopPoint/Mode/tube"
@@ -23,15 +23,14 @@ TUBE_LINES = {
     "waterloo-city",
 }
 
-
+# Fetches info about each station, we save id, as well as lines the station serves
 def fetch_stations() -> pd.DataFrame:
-    ''' Fetches info about each station, we save id as well as lines the station serves '''
-
     try:
         res = api(URL)
 
         rows = []
 
+        # format response (station id, line id)
         for sp in res["stopPoints"]:
             if sp["stopType"] != "NaptanMetroStation":
                 continue
@@ -61,7 +60,7 @@ if __name__ == "__main__":
     setup_logging()
 
     df = fetch_stations()
-
+    # save to parquet
     OUT_DIR = Path(f"data/raw/stations/")
 
     OUT_DIR.mkdir(parents=True, exist_ok=True)

@@ -7,7 +7,7 @@ from typing import Tuple
 import networkx as nx
 import pandas as pd
 
-from src.logging_config import setup_logging
+from utils.logging_config import setup_logging
 
 IN_FILE = Path("data/raw/stations/line_station.parquet")
 OUT_DIR = Path("data/processed")
@@ -15,10 +15,9 @@ OUT_GRAPH = OUT_DIR / "line_graph.pkl"
 OUT_EDGES = OUT_DIR / "line_graph_edges.parquet"
 
 
+# Builds graph of tube lines and their stations 
 def build_line_graph(df: pd.DataFrame) -> Tuple[nx.Graph, pd.DataFrame]:
-    """
-    Builds graph
-    """
+
     df = df.drop_duplicates(subset=["station_naptan", "line_id"])
 
     station_groups = df.groupby("station_naptan")["line_id"].apply(list)

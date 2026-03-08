@@ -1,23 +1,27 @@
+# polled every 5 minutes from aws ec2 instance
+
 import logging
 from datetime import datetime, timezone
 from pathlib import Path
 
 import pandas as pd
 
-from src.logging_config import setup_logging
-from src.tfl_api import api
+from utils.logging_config import setup_logging
+from utils.tfl_api import api
 
 
 URL = "https://api.tfl.gov.uk/Line/Mode/tube/Status"
 
+   
 
+# Fetches a single snapshot of tube line statuses 
 def fetch_line_status_snapshot(snapshot_time: datetime) -> pd.DataFrame:
-    ''' Fetches a single snapshot of tube line statuses '''
 
     try:
         res = api(URL)
         rows = []
 
+        # format response (line id, line name, status severity, status description)
         for line in res:
             line_id = line["id"]
             line_name = line["name"]
@@ -47,6 +51,7 @@ if __name__ == "__main__":
 
     setup_logging()
 
+    # time for filename
     snapshot_time = datetime.now(timezone.utc)
 
     df = fetch_line_status_snapshot(snapshot_time)
@@ -58,6 +63,7 @@ if __name__ == "__main__":
 
     OUT_FILE = OUT_DIR / "snapshots.parquet"
 
+    # if file exists, append to it
     if OUT_FILE.exists():
         existing = pd.read_parquet(OUT_FILE)
         df_final = pd.concat([existing, df], ignore_index=True)
@@ -67,7 +73,7 @@ if __name__ == "__main__":
     temp_file = OUT_FILE.with_suffix(".tmp")
     df_final.to_parquet(temp_file, index=False)
     temp_file.replace(OUT_FILE)
-
+    
     logging.info(f"Successfully saved {len(df)} rows to {OUT_FILE}")
 
     logging.debug(df_final.head(5))

@@ -4,15 +4,15 @@ from typing import List
 
 import pandas as pd
 
-from src.logging_config import setup_logging
+from utils.logging_config import setup_logging
 
 RAW_DIR = Path("data/raw/line_status")
 OUT_DIR = Path("data/processed")
 OUT_FILE = OUT_DIR / "line_status_5min.parquet"
 
 
+# Find all daily snapshot parquet files under data/raw/line_status/date=*/.
 def _find_snapshot_files(raw_dir: Path) -> List[Path]:
-    """Return all daily snapshot parquet files under data/raw/line_status/date=*/"""
     files: List[Path] = []
     if not raw_dir.exists():
         logging.error(f"Raw directory {raw_dir} does not exist.")
@@ -28,8 +28,8 @@ def _find_snapshot_files(raw_dir: Path) -> List[Path]:
     return files
 
 
+# Load and concatenate all raw snapshot parquet files.
 def _load_raw_snapshots(files: List[Path]) -> pd.DataFrame:
-    """Load and concatenate all raw snapshot parquet files"""
     if not files:
         raise FileNotFoundError("No snapshot parquet files found")
 
@@ -41,12 +41,14 @@ def _load_raw_snapshots(files: List[Path]) -> pd.DataFrame:
 
     df_all = pd.concat(dfs, ignore_index=True)
 
+    # Round to 5-min grid so we can align snapshots across days.
     df_all["snapshot_time_utc"] = pd.to_datetime(
         df_all["snapshot_time_utc"], utc=True)
     df_all["snapshot_time_utc"] = df_all["snapshot_time_utc"].dt.round("5min")
     df_all["line_id"] = df_all["line_id"].astype(str).str.lower()
     df_all["status_severity"] = df_all["status_severity"].astype("int64")
 
+    # Keep one row per (time, line) in case API returned duplicates.
     before = len(df_all)
     df_all = df_all.drop_duplicates(subset=["snapshot_time_utc", "line_id"])
     dropped = before - len(df_all)
@@ -57,10 +59,9 @@ def _load_raw_snapshots(files: List[Path]) -> pd.DataFrame:
     return df_all
 
 
+# Build a regular 5-minute time grid for all observed lines.
+# Reindex so we have a row for every (time, line) combo; missing data becomes NaN.
 def _build_regular_time_grid(df_all: pd.DataFrame) -> pd.DataFrame:
-    """
-    Build a regular 5-minute time grid for all observed lines.
-    """
     all_lines = sorted(df_all["line_id"].unique())
 
     t_min = df_all["snapshot_time_utc"].min().floor("5min")
@@ -85,10 +86,9 @@ def _build_regular_time_grid(df_all: pd.DataFrame) -> pd.DataFrame:
     return df_grid.reset_index()
 
 
+# Keep only timestamps where we have an observation for every line.
+# Needed so we can compare disruption rates fairly across lines.
 def _filter_to_fully_observed_timestamps(df_grid: pd.DataFrame) -> pd.DataFrame:
-    """
-    Keep only timestamps where we have an observation for every line.
-    """
     obs_rate = (
         df_grid.groupby("snapshot_time_utc")[
             "is_observed"].mean().rename("obs_rate")
@@ -120,17 +120,9 @@ def _filter_to_fully_observed_timestamps(df_grid: pd.DataFrame) -> pd.DataFrame:
     return df_filtered
 
 
+# Add disruption indicators from TFL status_severity codes.
+# 10 = good service; 9 = minor; 4 = planned closure; 2,3,5,6,20 = major issues.
 def _add_disruption_columns(df: pd.DataFrame) -> pd.DataFrame:
-    """
-    Add disruption indicators.
-      - is_disrupted_any: any disruption vs good service
-      - is_disrupted_main: alias for the main "any disruption" flag
-      - is_planned_closure: status_severity == 4
-      - is_disrupted_unplanned: disrupted but not planned closure
-      - is_disrupted_major: clear major service issues
-      - disruption_level: categorical {none, minor, major}
-    """
-
     if df["status_severity"].isna().any():
         raise RuntimeError(
             "status_severity contains NA after filtering; check pipeline.")
@@ -145,7 +137,7 @@ def _add_disruption_columns(df: pd.DataFrame) -> pd.DataFrame:
 
     df["is_disrupted_unplanned"] = (sev != 10) & (sev != 4)
 
-    # no service, suspended, part suspended, part closure, severe delays
+    # Major: no service, suspended, part suspended, part closure, severe delays.
     major_codes = {20, 2, 3, 5, 6}
     df["is_disrupted_major"] = sev.isin(major_codes)
 
@@ -162,6 +154,7 @@ def _add_disruption_columns(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
+# Enforce consistent dtypes for downstream analysis.
 def _enforce_dtypes(df: pd.DataFrame) -> pd.DataFrame:
     df = df.copy()
 
@@ -180,8 +173,8 @@ def _enforce_dtypes(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
+# Main pipeline: find files, load, grid, filter, add disruption flags, enforce dtypes.
 def build_status_table() -> pd.DataFrame:
-    """Build the line_status_5min df."""
     files = _find_snapshot_files(RAW_DIR)
     df_raw = _load_raw_snapshots(files)
 

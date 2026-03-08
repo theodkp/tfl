@@ -5,7 +5,7 @@ from pathlib import Path
 import networkx as nx
 import pandas as pd
 
-from src.logging_config import setup_logging
+from utils.logging_config import setup_logging
 
 
 IN_GRAPH = Path("data/processed/line_graph.pkl")
@@ -13,8 +13,8 @@ OUT_DIR = Path("data/processed")
 OUT_FILE = OUT_DIR / "line_distances.parquet"
 
 
+# Load the line graph pickle file (output of script 03).
 def load_graph(path: Path) -> nx.Graph:
-    """Load the line graph pkl file."""
     if not path.exists():
         raise FileNotFoundError(
             f"Line graph pickle not found at {path}. "
@@ -27,10 +27,9 @@ def load_graph(path: Path) -> nx.Graph:
     return G
 
 
+# Compute unweighted shortest path distances between all pairs of lines.
+# Distance = number of hops in the line graph (lines sharing a station = 1 hop).
 def compute_unweighted_shortest_paths(G: nx.Graph) -> pd.DataFrame:
-    """
-    Compute unweighted shortest path distances between all pairs of lines.
-    """
     records = []
     for src, lengths in nx.all_pairs_shortest_path_length(G):
         for tgt, d in lengths.items():
@@ -47,6 +46,7 @@ def compute_unweighted_shortest_paths(G: nx.Graph) -> pd.DataFrame:
     return df
 
 
+# Main pipeline: load graph, compute all-pairs distances, write parquet.
 def compute_distances() -> None:
     logging.info(f"Loading line graph from {IN_GRAPH}")
     G = load_graph(IN_GRAPH)
@@ -57,7 +57,7 @@ def compute_distances() -> None:
 
     df_dist = compute_unweighted_shortest_paths(G)
 
-    # checks
+    # Sanity check: log off-diagonal distances (we care about spillover between different lines).
     n_pairs = len(df_dist)
     logging.info(f"Computed distances for {n_pairs} pairs.")
 
