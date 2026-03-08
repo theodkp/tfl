@@ -1,5 +1,5 @@
 """
-Generate ablation figures:
+Generate figures:
 1. Spillover ranking (bar plot, time-matched, error bars)
 2. Baseline vs time-matched scatter (45° line)
 3. Distance decay (average effect_d1 vs effect_d2p)
